@@ -16,7 +16,7 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     // Verify that code entry screen elements are present.
-    expect(find.text('Rajasthani Photo Studios'), findsOneWidget);
+    expect(find.text('Photo Gallery'), findsOneWidget);
     expect(find.text('Enter Event Code'), findsOneWidget);
     expect(find.text('Access Photos'), findsOneWidget);
     
