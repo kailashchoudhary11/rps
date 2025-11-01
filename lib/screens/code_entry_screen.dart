@@ -117,7 +117,7 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
 
                   // App Title
                   const Text(
-                    'Photo Gallery',
+                    'Pic Studios',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
