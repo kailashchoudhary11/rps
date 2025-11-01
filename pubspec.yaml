@@ -46,6 +46,10 @@ dependencies:
   cached_network_image: ^3.4.1
   photo_view: ^0.15.0
   
+  # Video player
+  video_player: ^2.9.2
+  chewie: ^1.8.5
+  
   # File operations
   path_provider: ^2.1.5
   permission_handler: ^11.3.1

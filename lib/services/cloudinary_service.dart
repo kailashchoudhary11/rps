@@ -47,6 +47,42 @@ class CloudinaryService {
     }
   }
 
+  /// Get all videos for an event (using tag-based public listing)
+  Future<List<PhotoItem>> getEventVideos(String eventTag) async {
+    try {
+      // Try to fetch videos using the video list endpoint
+      final url = Uri.parse(
+        'https://res.cloudinary.com/$cloudName/video/list/$eventTag.json'
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode != 200) {
+        print('Error fetching Cloudinary videos: ${response.statusCode}');
+        print(response.body);
+        return [];
+      }
+
+      final data = json.decode(response.body);
+      final resources = data['resources'] as List<dynamic>? ?? [];
+
+      return resources.map((resource) {
+        final publicId = resource['public_id'] as String;
+        final createdAtStr = resource['created_at'] as String?;
+        final createdAt = createdAtStr != null ? DateTime.parse(createdAtStr) : null;
+
+        return PhotoItem(
+          publicId: publicId,
+          eventCode: eventTag,
+          uploadedAt: createdAt,
+        );
+      }).toList();
+    } catch (e) {
+      print('Exception while fetching Cloudinary videos: $e');
+      return [];
+    }
+  }
+
   /// Image optimization URL generator
   static String getOptimizedUrl(String publicId,
       {int? width, int? height, bool isThumb = false}) {
@@ -62,6 +98,16 @@ class CloudinaryService {
     return 'https://res.cloudinary.com/$cloudName/image/upload/fl_attachment/$publicId';
   }
 
+  /// Get video URL
+  static String getVideoUrl(String publicId) {
+    return 'https://res.cloudinary.com/$cloudName/video/upload/$publicId';
+  }
+
+  /// Get video thumbnail URL
+  static String getVideoThumbnail(String publicId) {
+    return 'https://res.cloudinary.com/$cloudName/video/upload/so_0,w_300,h_300,c_thumb/$publicId.jpg';
+  }
+
   /// Search helper (uses publicId as name)
   List<PhotoItem> searchPhotos(List<PhotoItem> photos, String query) {
     if (query.isEmpty) return photos;
@@ -70,3 +116,4 @@ class CloudinaryService {
         .toList();
   }
 }
+
