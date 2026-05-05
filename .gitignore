@@ -49,5 +49,8 @@ backend/.venv/
 backend/.env
 backend/*.db
 backend/*.db-journal
+backend/*.db-wal
+backend/*.db-shm
 backend/.ruff_cache/
+backend/data/
 **/__pycache__/

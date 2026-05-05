@@ -1,0 +1,98 @@
+name: Deploy backend to VM
+
+# Required repo secrets:
+#   VM_SSH_KEY  — PEM-encoded private key authorized on the VM
+#   VM_IP_ADDR  — VM hostname or public IP
+#   VM_USERNAME — SSH user on the VM (e.g. ubuntu)
+#   DEPLOY_DIR  — absolute path on the VM where the repo lives (e.g. /home/ubuntu/pic-studios)
+#   APP_ENV     — base64-encoded contents of backend/.env
+#                 Generate with: base64 -i backend/.env | pbcopy   (macOS)
+#                                base64 -w0 backend/.env           (Linux)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_KEY }}
+
+      - name: Add VM host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.VM_IP_ADDR }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to VM
+        env:
+          HOST: ${{ secrets.VM_IP_ADDR }}
+          USER: ${{ secrets.VM_USERNAME }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
+          APP_ENV: ${{ secrets.APP_ENV }}
+          REPO: ${{ github.repository }}
+        run: |
+          ssh "$USER@$HOST" << EOF
+            set -euo pipefail
+
+            echo "📁 Preparing deploy directory..."
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+
+            if [ ! -d ".git" ]; then
+              echo "📦 Cloning repository..."
+              git clone --single-branch --branch main \\
+                https://github.com/$REPO.git .
+            else
+              echo "🔄 Updating repository..."
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+
+            echo "📂 Switching to backend/..."
+            cd backend
+
+            echo "📝 Writing backend/.env file..."
+            echo "$APP_ENV" | base64 --decode > .env
+            chmod 600 .env
+
+            echo "🛑 Stopping running containers (if any)..."
+            docker compose down --remove-orphans || true
+
+            echo "🧹 Cleaning unused Docker images..."
+            docker image prune -f || true
+
+            echo "🔍 Validating Docker Compose config..."
+            docker compose config > /dev/null
+
+            echo "🐳 Building containers..."
+            docker compose build
+
+            echo "🚀 Starting services..."
+            docker compose up -d
+
+            echo "🩺 Waiting for /health..."
+            for i in \$(seq 1 20); do
+              if curl -sSf http://127.0.0.1:8000/health > /dev/null; then
+                echo "✅ /health responded"
+                break
+              fi
+              if [ "\$i" -eq 20 ]; then
+                echo "❌ /health did not respond within 60s"
+                docker compose logs --tail=80
+                exit 1
+              fi
+              sleep 3
+            done
+
+            echo "✅ Deployment finished successfully"
+          EOF

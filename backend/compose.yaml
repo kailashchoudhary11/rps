@@ -1,0 +1,25 @@
+name: pic-studios
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pic-studios-backend:dev
+    container_name: pic-studios
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    # Override DATABASE_URL so SQLite lands on the host bind-mount, not inside
+    # the image. The image is replaced on every release; ./data is not.
+    environment:
+      DATABASE_URL: "sqlite:////data/pic_studios.db"
+    volumes:
+      # Host bind mount: the SQLite file lives at backend/data/pic_studios.db
+      # and survives `docker compose down`, image rebuilds, and redeploys.
+      # On Linux servers, ensure the directory is writable by the container's
+      # `app` user — the image creates that user inside, but bind-mount
+      # ownership comes from the host, so chmod 0777 ./data or chown to the
+      # matching UID if you hit "permission denied" at startup.
+      - ./data:/data

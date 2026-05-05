@@ -22,7 +22,7 @@ uv sync                        # creates .venv and installs deps
 cp .env.example .env           # then edit .env with R2 credentials
 ```
 
-## Run
+## Run (local)
 
 ```bash
 uv run uvicorn app.main:app --reload
@@ -32,6 +32,80 @@ uv run uvicorn app.main:app --reload
 - Health: <http://localhost:8000/health>
 
 The Android emulator reaches the host machine via `10.0.2.2`, so the Flutter app should use `http://10.0.2.2:8000` as its API base URL.
+
+## Run with Docker Compose (recommended)
+
+The compose file mounts a host directory at `./data` into the container's `/data`, so the SQLite file lives at `backend/data/pic_studios.db` on the host filesystem. It survives `docker compose down`, image rebuilds, and full redeploys — releases never touch the data.
+
+```bash
+cd backend
+
+# First time / after pulling new code:
+docker compose up -d --build
+
+# Idempotent — only needed once per environment to create the TEST2024 event row.
+# Photos themselves don't need DB writes; just upload to R2.
+docker compose exec backend python -m scripts.seed
+
+# Tail logs
+docker compose logs -f backend
+```
+
+Upgrade flow (zero data loss):
+
+```bash
+git pull
+docker compose up -d --build      # rebuilds image, recreates container; ./data is untouched
+```
+
+Backup the DB any time (SQLite is safe to copy while idle, or use `.backup`):
+
+```bash
+cp backend/data/pic_studios.db "backend/data/pic_studios.$(date +%F).db.bak"
+# or, while the server is running, use SQLite's online backup:
+docker compose exec backend sh -c 'sqlite3 /data/pic_studios.db ".backup /data/pic_studios.bak"'
+```
+
+Tear down completely (DB stays):
+
+```bash
+docker compose down
+```
+
+Tear down **and wipe the DB** (rarely what you want):
+
+```bash
+docker compose down
+rm -rf data/
+```
+
+### Notes
+
+- `compose.yaml` sets `DATABASE_URL=sqlite:////data/pic_studios.db` to point inside the bind mount, overriding whatever `.env` says. The R2 keys still come from `.env`.
+- The directory `backend/data/` is gitignored — it must never enter source control.
+- On Linux servers, the bind mount inherits ownership from the host. If you hit `permission denied` at startup, `chown 999:999 backend/data` (the image's `app` user gets that UID) or `chmod 0777 backend/data`. macOS Docker Desktop handles this transparently.
+- `HEALTHCHECK` is inherited from the Dockerfile — `docker compose ps` shows `(healthy)` ~10 s after `up`.
+- Port 8000 is hardcoded. For platforms that inject `$PORT`, edit `compose.yaml` (`ports:` block) or the container `command:`.
+
+## Run with `docker run` (no compose)
+
+If you'd rather skip compose, the equivalent direct invocation is:
+
+```bash
+cd backend
+docker build -t pic-studios-backend .
+
+docker run -d --name pic-studios \
+  -p 8000:8000 \
+  --env-file .env \
+  -e DATABASE_URL='sqlite:////data/pic_studios.db' \
+  -v "$(pwd)/data:/data" \
+  pic-studios-backend
+
+docker exec pic-studios python -m scripts.seed
+```
+
+The `-v "$(pwd)/data:/data"` is the same bind mount the compose file sets up. Substituting `-v pic-studios-data:/data` would use a Docker-managed named volume instead — also persists, but lives inside Docker's storage rather than as a visible host file.
 
 ## Routes
 
