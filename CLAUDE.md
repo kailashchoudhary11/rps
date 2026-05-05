@@ -54,6 +54,7 @@ Flutter app  ──HTTP──▶  FastAPI  ──SQLAlchemy──▶  SQLite
 | `GET` | `/health` | `{"status":"ok"}` |
 | `GET` | `/events/{code}` | 200 with metadata (camelCase JSON), 404 missing, 410 expired |
 | `GET` | `/events/{code}/photos` | 200 with `{"photos":[{name,uploadedAt,url,thumbnailUrl},...]}`. 404 only if the event row is missing (DB existence check happens before R2 LIST); a real event with no uploaded photos returns `{"photos":[]}` and 200. |
+| `GET` | `/privacy` | Static HTML privacy policy served from `backend/app/static/privacy.html`. Used as the Play Store privacy-policy URL once the backend is on HTTPS. Hidden from `/docs`. |
 
 The backend uppercases the code on input (`_normalize_code` in `app/routers/events.py`). This is the **single normalization point** — the Flutter app sends whatever the user typed, the backend canonicalizes. Treat the canonical form (uppercase) as authoritative for everything downstream: DB primary keys, R2 object keys (`events/{CODE}/...`), Hero tags, etc.
 
@@ -73,9 +74,18 @@ When the (deferred) admin endpoints are added, they must call `_normalize_code` 
 
 ### Networking quirks
 
-- Android emulator → host machine: `http://10.0.2.2:8000`. The default in `lib/services/api_service.dart`.
-- Physical Android phone → host: the Mac's LAN IP, e.g. `http://192.168.1.42:8000`. Edit the constant; there's no env-driven config.
-- iOS simulator → host: `http://localhost:8000` (different from Android emulator).
+`ApiService.baseUrl` is a `String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000')`. Override at run/build time with `--dart-define`:
+
+```bash
+flutter run   --dart-define=API_BASE_URL=http://<vm-ip>:8369
+flutter build apk --dart-define=API_BASE_URL=https://api.example.com
+```
+
+The default targets the Android emulator's host gateway (`10.0.2.2`). Other contexts:
+
+- Physical Android phone on same WiFi → Mac's LAN IP (e.g. `http://192.168.1.42:8000`)
+- iOS simulator → `http://localhost:8000` (different from Android emulator)
+- VM with the deployed backend → `http://<vm-ip>:8369` (host port is hardcoded to 8369 in `backend/compose.yaml`)
 
 ### Downloads
 

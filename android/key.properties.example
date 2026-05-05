@@ -1,0 +1,10 @@
+# Copy this file to android/key.properties (which is gitignored) and fill in
+# values matching the keystore you generated with `keytool`.
+#
+# storeFile must be an absolute path or a path relative to the android/app
+# directory (where Gradle reads it from). Absolute is safest.
+
+storePassword=<your store password>
+keyPassword=<your key password>
+keyAlias=picstudios
+storeFile=/absolute/path/to/picstudios-upload.jks

@@ -6,10 +6,14 @@ import '../models/event_model.dart';
 import '../models/photo_item.dart';
 
 class ApiService {
-  // Android emulator reaches the host machine via 10.0.2.2.
-  // - Physical device on the same WiFi: use the Mac's LAN IP, e.g. http://192.168.1.42:8000
-  // - Production: replace with the deployed backend URL.
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  // Override at build/run time:
+  //   flutter run --dart-define=API_BASE_URL=http://<vm-ip>:8369
+  //   flutter build apk --dart-define=API_BASE_URL=https://api.example.com
+  // Default targets the Android emulator → host machine via 10.0.2.2.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8000',
+  );
 
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;

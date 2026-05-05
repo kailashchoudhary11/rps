@@ -79,7 +79,12 @@ flutter pub get
 flutter run
 ```
 
-The Android emulator reaches the host machine via `10.0.2.2`, so `ApiService.baseUrl` is set to `http://10.0.2.2:8000`. For a physical device on the same WiFi, change it to your Mac's LAN IP. For production, the deployed backend URL.
+`ApiService.baseUrl` defaults to `http://10.0.2.2:8000` (Android emulator → host gateway). Override at run time with `--dart-define`:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://<vm-ip>:8369
+flutter build apk --dart-define=API_BASE_URL=https://api.example.com
+```
 
 ## Platform support
 

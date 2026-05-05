@@ -82,7 +82,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 16),
-              const Expanded(child: Text('Photo downloaded successfully')),
+              const Expanded(child: Text('Saved to "Pic Studios" album')),
             ],
           ),
           backgroundColor: Colors.green,

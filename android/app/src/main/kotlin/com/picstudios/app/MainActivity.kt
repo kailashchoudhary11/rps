@@ -1,4 +1,4 @@
-package com.example.rps
+package com.picstudios.app
 
 import io.flutter.embedding.android.FlutterActivity
 

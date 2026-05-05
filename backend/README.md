@@ -114,6 +114,7 @@ The `-v "$(pwd)/data:/data"` is the same bind mount the compose file sets up. Su
 | GET    | `/health`                 | Liveness check                                       |
 | GET    | `/events/{code}`          | Event metadata (404 if missing, 410 if expired)      |
 | GET    | `/events/{code}/photos`   | LIST `events/{code}/thumbs/` in R2 → presigned `url` + `thumbnailUrl` per object, sorted by `LastModified` desc. 404 only if the event row is missing; an event with no uploaded photos returns `{"photos":[]}` and 200. |
+| GET    | `/privacy`                | Static HTML privacy policy (used as the Play Store privacy-policy URL). Served from `app/static/privacy.html`; hidden from the OpenAPI schema. |
 
 The event code is normalized to uppercase server-side. Admin endpoints (event creation, presigned upload URLs) are deferred. For now, create event rows with the seed script.
 

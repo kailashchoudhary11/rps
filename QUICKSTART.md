@@ -72,7 +72,11 @@ flutter pub get
 flutter run
 ```
 
-Pick the Android emulator from the device list. The app's `ApiService.baseUrl` is `http://10.0.2.2:8000`, which is how the emulator reaches the host machine.
+Pick the Android emulator from the device list. The app's `ApiService.baseUrl` defaults to `http://10.0.2.2:8000` (how the emulator reaches the host machine). For any other target, override with `--dart-define`:
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://<vm-ip>:8369
+```
 
 In the app:
 
