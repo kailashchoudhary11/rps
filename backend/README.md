@@ -85,7 +85,7 @@ rm -rf data/
 - The directory `backend/data/` is gitignored — it must never enter source control.
 - On Linux servers, the bind mount inherits ownership from the host. If you hit `permission denied` at startup, `chown 999:999 backend/data` (the image's `app` user gets that UID) or `chmod 0777 backend/data`. macOS Docker Desktop handles this transparently.
 - `HEALTHCHECK` is inherited from the Dockerfile — `docker compose ps` shows `(healthy)` ~10 s after `up`.
-- Port 8000 is hardcoded. For platforms that inject `$PORT`, edit `compose.yaml` (`ports:` block) or the container `command:`.
+- **Host port is hardcoded to 8369** in `compose.yaml` (container port stays 8000 internally). On the VM, the API is reachable at `http://<vm-ip>:8369`. Change the mapping there if you ever need a different port.
 
 ## Run with `docker run` (no compose)
 

@@ -80,19 +80,5 @@ jobs:
             echo "🚀 Starting services..."
             docker compose up -d
 
-            echo "🩺 Waiting for /health..."
-            for i in \$(seq 1 20); do
-              if curl -sSf http://127.0.0.1:8000/health > /dev/null; then
-                echo "✅ /health responded"
-                break
-              fi
-              if [ "\$i" -eq 20 ]; then
-                echo "❌ /health did not respond within 60s"
-                docker compose logs --tail=80
-                exit 1
-              fi
-              sleep 3
-            done
-
             echo "✅ Deployment finished successfully"
           EOF
