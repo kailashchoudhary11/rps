@@ -30,21 +30,15 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Non-root user
-RUN groupadd --system app \
- && useradd --system --gid app --home /app --shell /usr/sbin/nologin app
-
 WORKDIR /app
 
 # Bring over the prebuilt venv + app source from the builder stage.
-COPY --from=builder --chown=app:app /app /app
+COPY --from=builder /app /app
 
 # SQLite database lives outside the image so it survives container replacement.
 # Set DATABASE_URL=sqlite:////data/pic_studios.db when running.
-RUN mkdir -p /data && chown app:app /data
+RUN mkdir -p /data
 VOLUME ["/data"]
-
-USER app
 
 EXPOSE 8000
 

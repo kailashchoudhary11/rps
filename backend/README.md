@@ -83,7 +83,7 @@ rm -rf data/
 
 - `compose.yaml` sets `DATABASE_URL=sqlite:////data/pic_studios.db` to point inside the bind mount, overriding whatever `.env` says. The R2 keys still come from `.env`.
 - The directory `backend/data/` is gitignored — it must never enter source control.
-- On Linux servers, the bind mount inherits ownership from the host. If you hit `permission denied` at startup, `chown 999:999 backend/data` (the image's `app` user gets that UID) or `chmod 0777 backend/data`. macOS Docker Desktop handles this transparently.
+- The container runs as root, so the bind mount at `./data` works regardless of host filesystem ownership — no `chown` dance needed on the VM. The DB file ends up owned by host root (UID 0).
 - `HEALTHCHECK` is inherited from the Dockerfile — `docker compose ps` shows `(healthy)` ~10 s after `up`.
 - **Host port is hardcoded to 8369** in `compose.yaml` (container port stays 8000 internally). On the VM, the API is reachable at `http://<vm-ip>:8369`. Change the mapping there if you ever need a different port.
 
