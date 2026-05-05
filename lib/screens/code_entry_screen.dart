@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/firebase_service.dart';
+import '../services/api_service.dart';
 import '../models/event_model.dart';
 import 'gallery_screen.dart';
 
@@ -12,7 +12,7 @@ class CodeEntryScreen extends StatefulWidget {
 
 class _CodeEntryScreenState extends State<CodeEntryScreen> {
   final TextEditingController _codeController = TextEditingController();
-  final FirebaseService _firebaseService = FirebaseService();
+  final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -23,7 +23,7 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
   }
 
   Future<void> _verifyCode() async {
-    final code = _codeController.text.trim().toUpperCase();
+    final code = _codeController.text.trim();
 
     if (code.isEmpty) {
       setState(() {
@@ -38,7 +38,7 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
     });
 
     try {
-      final EventModel? event = await _firebaseService.getEventByCode(code);
+      final EventModel? event = await _apiService.getEvent(code);
 
       if (!mounted) return;
 
@@ -171,7 +171,6 @@ class _CodeEntryScreenState extends State<CodeEntryScreen> {
                         TextField(
                           controller: _codeController,
                           textAlign: TextAlign.center,
-                          textCapitalization: TextCapitalization.characters,
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,

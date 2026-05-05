@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class EventModel {
   final String eventCode;
   final String eventName;
@@ -17,28 +15,17 @@ class EventModel {
     required this.photoCount,
   });
 
-  factory EventModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory EventModel.fromJson(Map<String, dynamic> json) {
     return EventModel(
-      eventCode: doc.id,
-      eventName: data['eventName'] ?? '',
-      studioName: data['studioName'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      expiresAt: data['expiresAt'] != null
-          ? (data['expiresAt'] as Timestamp).toDate()
+      eventCode: json['code'] as String,
+      eventName: json['eventName'] as String,
+      studioName: json['studioName'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      expiresAt: json['expiresAt'] != null
+          ? DateTime.parse(json['expiresAt'] as String)
           : null,
-      photoCount: data['photoCount'] ?? 0,
+      photoCount: json['photoCount'] as int,
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'eventName': eventName,
-      'studioName': studioName,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'expiresAt': expiresAt != null ? Timestamp.fromDate(expiresAt!) : null,
-      'photoCount': photoCount,
-    };
   }
 
   bool get isExpired {

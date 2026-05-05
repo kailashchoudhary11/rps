@@ -34,8 +34,7 @@ class DownloadService {
         throw Exception('Could not get download directory');
       }
 
-      // Create subdirectory for RajasthaniPhotoStudios
-      directory = Directory('${directory.path}/RajasthaniPhotoStudios');
+      directory = Directory('${directory.path}/PicStudios');
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
@@ -59,6 +58,6 @@ class DownloadService {
   static Future<String> getDownloadDirectory() async {
     Directory? directory = await getExternalStorageDirectory();
     if (directory == null) return '';
-    return '${directory.path}/RajasthaniPhotoStudios';
+    return '${directory.path}/PicStudios';
   }
 }

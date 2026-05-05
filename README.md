@@ -1,159 +1,91 @@
-# Rajasthani Photo Studios 📸
+# Pic Studios
 
-A Flutter app for event photo sharing - making it easy for photo studios to share event photos with guests using simple access codes.
+A Flutter app for event photo sharing — guests enter a short event code and browse the studio's photos for that event. The app talks only to a small FastAPI backend, which stores event metadata + the photo manifest in SQLite and mints presigned URLs for a private R2 bucket.
+
+```
+Flutter app  ──HTTP──▶  FastAPI backend  ──SQLAlchemy──▶  SQLite
+                              │
+                              └──S3 SDK──▶  Cloudflare R2 (private bucket, presigned URLs)
+```
+
+No Firebase. No public Cloudinary. R2 stays private — the backend is the only thing with credentials.
+
+## Repo layout
+
+```
+.
+├── lib/                 # Flutter app
+│   ├── main.dart
+│   ├── models/          # EventModel, PhotoItem (plain JSON)
+│   ├── screens/         # CodeEntryScreen, GalleryScreen, PhotoViewerScreen
+│   └── services/        # ApiService (HTTP), DownloadService (disk)
+├── android/, ios/, ...  # Flutter platform folders
+├── backend/             # FastAPI service — see backend/README.md
+└── test/                # Flutter widget tests
+```
 
 ## Features
 
-- 🔑 **Code-based Access**: Simple event code system for accessing photos
-- 📱 **Beautiful UI**: Rajasthani-themed design with gradient backgrounds
-- 🖼️ **Photo Gallery**: Grid layout with smooth scrolling and thumbnails
-- 🔍 **Search**: Search photos by filename
-- 📥 **Download**: Download individual photos to device
-- 🔎 **Full-screen Viewer**: Pinch-to-zoom with photo navigation
-- 💾 **Smart Caching**: Cached images for better performance
-- ⚡ **Fast Loading**: Shimmer loading effects and optimized images
+- Code-based event access (HTTP lookup against the backend)
+- Grid view with shimmer placeholders and cached thumbnails
+- Filename search across the loaded manifest
+- Full-screen viewer with pinch-to-zoom (`photo_view`)
+- Single-tap download of the current photo to app storage
+- Backend-driven event expiry (`expiresAt`)
 
-## Project Structure
+## How a request flows
 
-```
-lib/
-├── main.dart                        # App entry point & Firebase init
-├── models/                          # Data models
-│   ├── event_model.dart            # Event information model
-│   └── photo_item.dart             # Photo metadata model
-├── screens/                         # App screens
-│   ├── code_entry_screen.dart      # Event code entry
-│   ├── gallery_screen.dart         # Photo grid gallery
-│   └── photo_viewer_screen.dart    # Full-screen photo viewer
-└── services/                        # Business logic
-    ├── firebase_service.dart       # Firebase/Firestore operations
-    └── download_service.dart       # Photo download handling
-```
+1. User enters an event code → app `POST`s to `GET /events/{code}`.
+2. Backend looks up the row, returns metadata or 404/410.
+3. App calls `GET /events/{code}/photos` → backend mints two presigned R2 URLs per photo (full + thumbnail) with a configurable TTL.
+4. Grid loads thumbnails directly from R2 using the presigned URLs.
+5. Tap → viewer loads the full presigned URL. Download → bytes are fetched via `http` and written to `getExternalStorageDirectory()/PicStudios/`.
 
-## Setup Instructions
+## Setup
 
-### 1. Firebase Setup (for Event Data)
+### 1. Backend
 
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project (no credit card needed!)
-3. Enable **Cloud Firestore** only
-
-**Firestore Security Rules:**
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /events/{eventCode} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}
-```
-
-### 2. Cloudinary Setup (for Photos)
-
-1. Create free account at [Cloudinary.com](https://cloudinary.com)
-2. No credit card required!
-3. Get your Cloud Name and create Upload Preset
-4. See [CLOUDINARY_SETUP.md](CLOUDINARY_SETUP.md) for details
-
-### 3. Configure Flutter App
-
-1. **Install FlutterFire CLI:**
-```bash
-dart pub global activate flutterfire_cli
-```
-
-2. **Configure Firebase:**
-```bash
-flutterfire configure
-```
-
-3. **Update Cloudinary Config:**
-Edit `lib/services/cloudinary_service.dart`:
-```dart
-static const String cloudName = 'YOUR_CLOUD_NAME';
-static const String uploadPreset = 'YOUR_UPLOAD_PRESET';
-```
-
-## Installation
-
-1. **Clone the repository**
+See [backend/README.md](backend/README.md). Short version:
 
 ```bash
-git clone <your-repo-url>
-cd rps
+pyenv install 3.13.5             # one time
+cd backend
+uv sync
+cp .env.example .env             # fill in R2 creds
+uv run uvicorn app.main:app --reload
+uv run python -m scripts.seed    # inserts TEST2024 + 2 photo rows
 ```
 
-2. **Install dependencies**
+Backend is reachable at <http://localhost:8000>; Swagger UI at `/docs`.
+
+### 2. R2
+
+- Create a bucket in Cloudflare R2.
+- Generate an API token scoped to that bucket (read+write).
+- Keep the bucket **private** — no public r2.dev access.
+- Drop `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` into `backend/.env`.
+- Object key layout:
+  - `events/{code}/{name}` — full image
+  - `events/{code}/thumbs/{name}` — 300px thumbnail
+
+Each photo also needs a row in the SQLite `photos` table (the seed script does this for `TEST2024`).
+
+### 3. Flutter app
 
 ```bash
 flutter pub get
-```
-
-3. **Configure Firebase** (see Firebase Setup above)
-
-4. **Run the app**
-
-```bash
 flutter run
 ```
 
-## Usage Guide
+The Android emulator reaches the host machine via `10.0.2.2`, so `ApiService.baseUrl` is set to `http://10.0.2.2:8000`. For a physical device on the same WiFi, change it to your Mac's LAN IP. For production, the deployed backend URL.
 
-### For Guests (App Users)
+## Platform support
 
-1. Open the app
-2. Enter the event code provided by your photo studio
-3. Browse photos in grid view
-4. Tap any photo to view full-screen
-5. Use the download button to save photos
+- Android — primary target
+- iOS — works in principle; not configured by default
+- Web / desktop — not supported (download flow uses mobile-only `path_provider` + `permission_handler`)
 
-### For Studios (Manual Upload for MVP)
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Navigate to **Firestore Database**
-3. Create a document in `events` collection:
-   - Document ID: Your event code (e.g., `WED2024`)
-   - Fields: eventName, studioName, createdAt, photoCount
-
-4. Navigate to **Storage**
-5. Create folder: `events/{eventCode}/photos/`
-6. Upload photos to this folder
-
-**Example Event Document:**
-
-```json
-{
-  "eventName": "Sharma Wedding",
-  "studioName": "Rajasthani Photo Studios",
-  "createdAt": "2024-10-24",
-  "photoCount": 150,
-  "expiresAt": null
-}
-```
-
-## Testing
-
-Run tests:
-
-```bash
-flutter test
-```
-
-## Platform Support
-
-- ✅ **Android** (Tested on Android 8+)
-- ✅ **iOS** (Tested on iOS 12+)
-- ⚠️ **Web** (Download functionality may vary)
-- ⚠️ **Desktop** (Windows/macOS/Linux - not optimized yet)
-
-## Permissions
-
-### Android
-
-Add to `android/app/src/main/AndroidManifest.xml`:
+### Android permissions (`android/app/src/main/AndroidManifest.xml`)
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET"/>
@@ -161,47 +93,22 @@ Add to `android/app/src/main/AndroidManifest.xml`:
 <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 ```
 
-### iOS
+## Testing
 
-Add to `ios/Runner/Info.plist`:
-
-```xml
-<key>NSPhotoLibraryAddUsageDescription</key>
-<string>We need access to save photos to your gallery</string>
+```bash
+flutter test         # widget smoke test
+flutter analyze      # lint
 ```
 
-## Future Enhancements
-
-- [ ] Studio dashboard for uploading photos
-- [ ] Bulk download (download all photos)
-- [ ] Video support
-- [ ] Favorites/Collections
-- [ ] Share photos via social media
-- [ ] QR code scanning for event codes
-- [ ] Analytics dashboard for studios
-- [ ] Push notifications for new uploads
+Backend tests aren't set up yet (see `backend/README.md` for what's deferred).
 
 ## Troubleshooting
 
-**Firebase not initialized error:**
-- Make sure you've run `flutterfire configure`
-- Check that `firebase_options.dart` exists in `lib/`
-- Verify `google-services.json` (Android) or `GoogleService-Info.plist` (iOS) exists
-
-**Photos not loading:**
-- Check Firebase Storage rules allow public read access
-- Verify photos are in correct path: `events/{eventCode}/photos/`
-- Check internet connection
-
-**Download not working:**
-- Grant storage permissions in app settings
-- Check available storage space
-- Android 13+: Photos save to `Pictures/RajasthaniPhotoStudios`
+- **`Connection refused` on the app** — backend isn't running, or `ApiService.baseUrl` is wrong for your device. Emulator uses `10.0.2.2`, not `localhost`.
+- **`/events/TEST2024/photos` returns 500** — `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` are blank in `backend/.env`. Fill them in.
+- **Gallery shows broken-image icons** — the photo rows exist in SQLite but the matching R2 objects don't (or the keys don't match). Paste a presigned URL into a browser to see the real R2 error.
+- **Download permission denied on Android 13+** — grant "Files and media" in the app's system settings.
 
 ## License
 
-Private project - All rights reserved
-
-## Contact
-
-For support or inquiries, contact your development team.
+Private project — all rights reserved.

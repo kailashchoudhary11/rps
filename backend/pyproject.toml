@@ -1,0 +1,22 @@
+[project]
+name = "pic-studios-backend"
+version = "0.1.0"
+description = "Pic Studios backend - event metadata + R2 presigned URLs"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "boto3>=1.35",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"

@@ -1,24 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
 import '../models/photo_item.dart';
 import '../services/download_service.dart';
-import '../services/cloudinary_service.dart';
 
 class PhotoViewerScreen extends StatefulWidget {
   final List<PhotoItem> photos;
   final int initialIndex;
   final String eventName;
-  final bool isVideo;
 
   const PhotoViewerScreen({
     super.key,
     required this.photos,
     required this.initialIndex,
     required this.eventName,
-    this.isVideo = false,
   });
 
   @override
@@ -43,7 +38,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     super.dispose();
   }
 
-  Future<void> _downloadCurrentMedia() async {
+  Future<void> _downloadCurrentPhoto() async {
     if (_isDownloading) return;
 
     setState(() {
@@ -51,9 +46,8 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     });
 
     try {
-      final media = widget.photos[_currentIndex];
-      
-      // Show downloading snackbar
+      final photo = widget.photos[_currentIndex];
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -76,30 +70,19 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         );
       }
 
-      final downloadUrl = widget.isVideo 
-          ? CloudinaryService.getVideoUrl(media.publicId)
-          : media.downloadUrl;
-
-      await DownloadService.downloadImage(
-        downloadUrl,
-        media.name,
-      );
+      await DownloadService.downloadImage(photo.downloadUrl, photo.name);
 
       if (!mounted) return;
 
-      // Hide downloading snackbar
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      // Show success snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               const Icon(Icons.check_circle, color: Colors.white),
               const SizedBox(width: 16),
-              Expanded(
-                child: Text('${widget.isVideo ? "Video" : "Photo"} downloaded successfully'),
-              ),
+              const Expanded(child: Text('Photo downloaded successfully')),
             ],
           ),
           backgroundColor: Colors.green,
@@ -113,19 +96,15 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      // Hide downloading snackbar
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      // Show error snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               const Icon(Icons.error, color: Colors.white),
               const SizedBox(width: 16),
-              Expanded(
-                child: Text('Download failed: ${e.toString()}'),
-              ),
+              Expanded(child: Text('Download failed: ${e.toString()}')),
             ],
           ),
           backgroundColor: Colors.red,
@@ -151,14 +130,11 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         elevation: 0,
         title: Text(
           '${_currentIndex + 1} / ${widget.photos.length}',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
         actions: [
           IconButton(
-            onPressed: _isDownloading ? null : _downloadCurrentMedia,
+            onPressed: _isDownloading ? null : _downloadCurrentPhoto,
             icon: _isDownloading
                 ? const SizedBox(
                     width: 20,
@@ -169,18 +145,43 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                     ),
                   )
                 : const Icon(Icons.download),
-            tooltip: 'Download ${widget.isVideo ? "Video" : "Photo"}',
+            tooltip: 'Download Photo',
           ),
         ],
       ),
       body: Stack(
         children: [
-          // Media Gallery
-          widget.isVideo
-              ? _buildVideoGallery()
-              : _buildPhotoGallery(),
+          PhotoViewGallery.builder(
+            scrollPhysics: const BouncingScrollPhysics(),
+            pageController: _pageController,
+            itemCount: widget.photos.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            builder: (context, index) {
+              final photo = widget.photos[index];
+              return PhotoViewGalleryPageOptions(
+                imageProvider: NetworkImage(photo.url),
+                initialScale: PhotoViewComputedScale.contained,
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 3,
+                heroAttributes: PhotoViewHeroAttributes(
+                  tag: 'photo_${photo.eventCode}/${photo.name}',
+                ),
+              );
+            },
+            loadingBuilder: (context, event) => Center(
+              child: CircularProgressIndicator(
+                value: event == null
+                    ? 0
+                    : event.cumulativeBytesLoaded / event.expectedTotalBytes!,
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          ),
 
-          // Bottom Info Bar
           Positioned(
             bottom: 0,
             left: 0,
@@ -222,8 +223,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            _formatDate(
-                                widget.photos[_currentIndex].uploadedAt!),
+                            _formatDate(widget.photos[_currentIndex].uploadedAt!),
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.7),
                               fontSize: 12,
@@ -241,167 +241,13 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     );
   }
 
-  Widget _buildPhotoGallery() {
-    return PhotoViewGallery.builder(
-      scrollPhysics: const BouncingScrollPhysics(),
-      pageController: _pageController,
-      itemCount: widget.photos.length,
-      onPageChanged: (index) {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
-      builder: (context, index) {
-        final photo = widget.photos[index];
-        return PhotoViewGalleryPageOptions(
-          imageProvider: NetworkImage(photo.url),
-          initialScale: PhotoViewComputedScale.contained,
-          minScale: PhotoViewComputedScale.contained,
-          maxScale: PhotoViewComputedScale.covered * 3,
-          heroAttributes: PhotoViewHeroAttributes(
-            tag: 'photo_${photo.publicId}',
-          ),
-        );
-      },
-      loadingBuilder: (context, event) => Center(
-        child: CircularProgressIndicator(
-          value: event == null
-              ? 0
-              : event.cumulativeBytesLoaded / event.expectedTotalBytes!,
-          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoGallery() {
-    return PageView.builder(
-      controller: _pageController,
-      itemCount: widget.photos.length,
-      onPageChanged: (index) {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
-      itemBuilder: (context, index) {
-        final video = widget.photos[index];
-        return VideoPlayerWidget(
-          videoUrl: CloudinaryService.getVideoUrl(video.publicId),
-        );
-      },
-    );
-  }
-
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
 
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-}
-
-class VideoPlayerWidget extends StatefulWidget {
-  final String videoUrl;
-
-  const VideoPlayerWidget({super.key, required this.videoUrl});
-
-  @override
-  State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
-}
-
-class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  late VideoPlayerController _videoPlayerController;
-  ChewieController? _chewieController;
-  bool _isInitialized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializePlayer();
-  }
-
-  Future<void> _initializePlayer() async {
-    _videoPlayerController = VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoUrl),
-    );
-
-    try {
-      await _videoPlayerController.initialize();
-      
-      _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController,
-        autoPlay: false,
-        looping: false,
-        aspectRatio: _videoPlayerController.value.aspectRatio,
-        showControls: true,
-        placeholder: Container(
-          color: Colors.black,
-          child: const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ),
-        errorBuilder: (context, errorMessage) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.white,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Failed to load video',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-      }
-    } catch (e) {
-      print('Error initializing video: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _videoPlayerController.dispose();
-    _chewieController?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_isInitialized || _chewieController == null) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-        ),
-      );
-    }
-
-    return Center(
-      child: Chewie(
-        controller: _chewieController!,
-      ),
-    );
+    if (difference.inDays == 0) return 'Today';
+    if (difference.inDays == 1) return 'Yesterday';
+    if (difference.inDays < 7) return '${difference.inDays} days ago';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
