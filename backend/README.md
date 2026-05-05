@@ -2,8 +2,8 @@
 
 FastAPI service that:
 
-- Stores event metadata + photo manifest in SQLite
-- Mints presigned R2 URLs for full images and thumbnails on demand
+- Stores **event metadata** in SQLite (the photo manifest is **not** in the DB)
+- Lists R2 to enumerate photos at request time and mints presigned URLs for full images + thumbnails
 
 The Flutter app talks only to this service — R2 stays private, no Firestore, no public r2.dev URLs.
 
@@ -39,11 +39,9 @@ The Android emulator reaches the host machine via `10.0.2.2`, so the Flutter app
 |--------|---------------------------|------------------------------------------------------|
 | GET    | `/health`                 | Liveness check                                       |
 | GET    | `/events/{code}`          | Event metadata (404 if missing, 410 if expired)      |
-| GET    | `/events/{code}/photos`   | Photo manifest with presigned `url` + `thumbnailUrl` |
+| GET    | `/events/{code}/photos`   | LIST `events/{code}/thumbs/` in R2 → presigned `url` + `thumbnailUrl` per object, sorted by `LastModified` desc. 404 only if the event row is missing; an event with no uploaded photos returns `{"photos":[]}` and 200. |
 
-The event code is normalized to uppercase server-side, mirroring the app.
-
-Admin endpoints (event creation, photo registration, presigned upload URLs) are deferred. For now, populate the DB with the seed script.
+The event code is normalized to uppercase server-side. Admin endpoints (event creation, presigned upload URLs) are deferred. For now, create event rows with the seed script.
 
 ## Seed test data
 
@@ -51,22 +49,30 @@ Admin endpoints (event creation, photo registration, presigned upload URLs) are 
 uv run python -m scripts.seed
 ```
 
-Inserts `events/TEST2024` with two photo rows (`photo1.jpg`, `photo2.jpg`). The matching R2 objects must exist for the presigned URLs to actually return bytes:
+Inserts the `TEST2024` event row. Photos are discovered by listing R2 — there are no per-photo DB writes. To populate the gallery, upload to your R2 bucket under:
 
 ```
 events/TEST2024/photo1.jpg          # full image
-events/TEST2024/thumbs/photo1.jpg   # 300px thumbnail
-events/TEST2024/photo2.jpg
-events/TEST2024/thumbs/photo2.jpg
+events/TEST2024/thumbs/photo1.jpg   # ~500px square thumbnail
 ```
+
+…and the next call to `/events/TEST2024/photos` picks them up.
 
 ## R2 layout
 
-For each photo, two objects with these exact keys:
+For each photo, two objects with matching filenames:
 
 ```
 events/{code}/{name}              # full-resolution original
-events/{code}/thumbs/{name}       # 300px thumbnail
+events/{code}/thumbs/{name}       # thumbnail
 ```
 
-The backend mints presigned `GET` URLs for both — the bucket should be **private** (no r2.dev public access).
+The bucket should be **private** (no r2.dev public access). The backend mints presigned `GET` URLs for both. The thumbnail key set is the source of truth for the manifest — `list_event_photos` in `app/r2.py` does the enumeration via paginated `ListObjectsV2`.
+
+### Cost note
+
+`ListObjectsV2` is a Class A op in R2 ($4.50 per million; **1M free per month**). One LIST per gallery open. At any reasonable scale this is effectively free.
+
+### Sort order
+
+Photos are returned sorted by `LastModified` descending (newest first). If you need stable ordering across re-uploads, control the timestamp explicitly when uploading (S3 SDKs accept it as a parameter).

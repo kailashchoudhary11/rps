@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import boto3
 from botocore.config import Config
 
@@ -26,3 +28,23 @@ def presigned_get_url(key: str) -> str:
         Params={"Bucket": settings.r2_bucket, "Key": key},
         ExpiresIn=settings.presigned_url_ttl,
     )
+
+
+def list_event_photos(code: str) -> list[tuple[str, datetime]]:
+    """Return (name, last_modified) for each thumbnail under events/{code}/thumbs/.
+
+    The thumbnail key set is the source of truth for the manifest — every visible
+    photo must have a thumbnail. Pagination is handled transparently.
+    """
+    prefix = f"events/{code}/thumbs/"
+    paginator = _client().get_paginator("list_objects_v2")
+    items: list[tuple[str, datetime]] = []
+    for page in paginator.paginate(Bucket=settings.r2_bucket, Prefix=prefix):
+        print("The page is", page)
+        for obj in page.get("Contents", []):
+            name = obj["Key"][len(prefix) :]
+            if not name:
+                # The prefix itself can show up as an empty-name entry — skip it.
+                continue
+            items.append((name, obj["LastModified"]))
+    return items

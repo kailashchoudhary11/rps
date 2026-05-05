@@ -30,7 +30,7 @@ cd backend
 uv run python -m scripts.seed
 ```
 
-Inserts `events/TEST2024` with two photo rows (`photo1.jpg`, `photo2.jpg`).
+Inserts the `TEST2024` event row. (Photos themselves are discovered by listing R2 — no per-photo DB writes.)
 
 `GET /events/TEST2024` should now return:
 
@@ -40,8 +40,7 @@ Inserts `events/TEST2024` with two photo rows (`photo1.jpg`, `photo2.jpg`).
   "eventName": "Test Event",
   "studioName": "Pic Studios",
   "createdAt": "...",
-  "expiresAt": null,
-  "photoCount": 2
+  "expiresAt": null
 }
 ```
 
@@ -56,14 +55,14 @@ Inserts `events/TEST2024` with two photo rows (`photo1.jpg`, `photo2.jpg`).
    R2_SECRET_ACCESS_KEY=<token secret>
    R2_BUCKET=<bucket name>
    ```
-4. Upload sample objects (manually for now — admin/upload endpoints are deferred):
+4. Upload sample objects (manually for now — admin/upload endpoints are deferred). Object keys are case-sensitive; filenames should be lowercase and URL-safe:
    ```
    events/TEST2024/photo1.jpg              # full image
-   events/TEST2024/thumbs/photo1.jpg       # 300px thumbnail
+   events/TEST2024/thumbs/photo1.jpg       # ~500px square thumbnail
    events/TEST2024/photo2.jpg
    events/TEST2024/thumbs/photo2.jpg
    ```
-5. Restart `uvicorn` and hit `GET /events/TEST2024/photos`. You should see two photos with presigned `url` and `thumbnailUrl`.
+5. Hit `GET /events/TEST2024/photos`. The backend runs `ListObjectsV2` over `events/TEST2024/thumbs/` and returns one entry per thumbnail with presigned `url` (full) and `thumbnailUrl`. No backend restart needed — uploads show up on the next request.
 
 ## 4. Run the Flutter app
 
@@ -85,8 +84,9 @@ In the app:
 ## Common issues
 
 - **App says "Connection refused"** — backend isn't running, or you're on a physical device. Emulator → `http://10.0.2.2:8000`. Physical device on same WiFi → your Mac's LAN IP, e.g. `http://192.168.1.42:8000`. Edit `lib/services/api_service.dart` and hot-restart (capital `R`).
-- **`/events/TEST2024/photos` returns 500** — R2 creds are blank in `backend/.env`.
-- **Photos load in `/photos` JSON but show broken icons in the app** — paste the presigned URL into a browser. If it 403s or 404s, R2 keys/bucket name are wrong, or the object doesn't exist at that key. Object keys are case-sensitive and must match the `name` in the SQLite `photos` row exactly.
+- **`/events/TEST2024/photos` returns 500** — R2 creds are blank/wrong in `backend/.env`, or the `R2_BUCKET` name is wrong.
+- **`/photos` returns `{"photos":[]}` after uploading** — your objects aren't under `events/TEST2024/thumbs/`. Verify the exact prefix in R2 (case-sensitive).
+- **Thumbs render but full-screen 404s** — full-size objects are missing from `events/{code}/`. Always upload both full and thumb with matching filenames.
 - **Build fails** — `flutter clean && flutter pub get && flutter run`.
 - **Permission denied on Android 13+ during download** — grant "Files and media" in the app's system settings.
 

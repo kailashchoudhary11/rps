@@ -4,7 +4,6 @@ class EventModel {
   final String studioName;
   final DateTime createdAt;
   final DateTime? expiresAt;
-  final int photoCount;
 
   EventModel({
     required this.eventCode,
@@ -12,7 +11,6 @@ class EventModel {
     required this.studioName,
     required this.createdAt,
     this.expiresAt,
-    required this.photoCount,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -24,7 +22,6 @@ class EventModel {
       expiresAt: json['expiresAt'] != null
           ? DateTime.parse(json['expiresAt'] as String)
           : null,
-      photoCount: json['photoCount'] as int,
     );
   }
 

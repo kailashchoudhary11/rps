@@ -18,7 +18,6 @@ class EventOut(CamelModel):
     studio_name: str
     created_at: datetime
     expires_at: datetime | None
-    photo_count: int
 
 
 class PhotoOut(CamelModel):

@@ -1,9 +1,14 @@
-"""Insert TEST2024 with two photo rows so the gallery flow can be exercised."""
+"""Insert TEST2024 event so the gallery flow can be exercised end-to-end.
+
+The photo manifest now comes from R2 LIST, not the database. Upload sample
+photos under events/TEST2024/ and events/TEST2024/thumbs/ in your R2 bucket
+to see them in the gallery.
+"""
 
 from datetime import datetime, timezone
 
 from app.db import Base, SessionLocal, engine
-from app.models import Event, Photo
+from app.models import Event
 
 
 def main() -> None:
@@ -21,17 +26,10 @@ def main() -> None:
                     expires_at=None,
                 )
             )
-
-        existing = {
-            p.name for p in db.query(Photo).filter_by(event_code="TEST2024").all()
-        }
-        for name in ("photo1.jpg", "photo2.jpg"):
-            if name not in existing:
-                db.add(Photo(event_code="TEST2024", name=name, uploaded_at=now))
-
-        db.commit()
-
-    print("Seeded TEST2024 with photo1.jpg, photo2.jpg")
+            db.commit()
+            print("Seeded TEST2024.")
+        else:
+            print("TEST2024 already exists; nothing to do.")
 
 
 if __name__ == "__main__":
