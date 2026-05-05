@@ -30,100 +30,115 @@
     a { color: var(--accent); }
     ul { padding-left: 1.25rem; }
     li { margin: 0.25rem 0; }
-    code { background: rgba(127,127,127,0.15); padding: 0.05em 0.3em; border-radius: 3px; font-size: 0.95em; }
   </style>
 </head>
 <body>
   <h1>Privacy Policy</h1>
   <p class="meta">Pic Studios &middot; Effective 5 May 2026</p>
 
-  <h2>Overview</h2>
   <p>
-    Pic Studios is a mobile app that lets event guests view and download their event photos
-    using a short event code provided by the photo studio. This policy describes what
-    information the app handles and how it is used.
+    This policy explains how the Pic Studios app handles your information.
+    Pic Studios is a photo-sharing app for event attendees: the photo studio
+    running your event gives you a short event code, you type it into the
+    app, and the app shows you the photos from that event so you can view
+    and save them.
   </p>
 
-  <h2>Information we collect from users</h2>
+  <h2>Information we collect from you</h2>
   <p>
-    None directly. The app does not require an account, does not ask for your name, email,
-    phone number, or location, and does not include analytics or advertising SDKs. No
-    device identifiers are collected.
+    We do not ask for your name, email address, phone number, age, location,
+    or any other personal details. The app has no sign-up and no user
+    accounts.
+  </p>
+  <p>
+    The only thing the app sends to us is the event code you type in, which
+    we use to look up the photos for that event. The code is not associated
+    with you or your device.
   </p>
 
-  <h2>Information transmitted by the app</h2>
-  <p>
-    When you enter an event code and tap <strong>Access Photos</strong>, the app sends that
-    code to our backend server to look up the corresponding event and the list of available
-    photos. No other information is transmitted from the app.
-  </p>
-  <p>
-    Photo bytes are loaded directly from a private Cloudflare R2 storage bucket using
-    short-lived, signed URLs that the backend issues per request. Photo data flows from
-    Cloudflare R2 to your device; it is not routed through our backend.
-  </p>
-
-  <h2>What we store on our servers</h2>
-  <p>
-    Our backend stores <em>event metadata only</em> &mdash; the event code, event name,
-    studio name, creation date, and an optional expiry date. Photographs are held in a
-    private Cloudflare R2 bucket controlled by the studio. We do not log which device
-    requested which event, nor do we keep any history of access.
-  </p>
-
-  <h2>What the app stores on your device</h2>
-  <p>
-    Photos that you tap the download button on are saved to your device's photo gallery,
-    inside an album named <strong>Pic Studios</strong>. They are saved on-device only.
-    The app does not transmit any of your existing photos or media anywhere.
-  </p>
-
-  <h2>Permissions the app requests</h2>
+  <h2>What we don't collect or do</h2>
   <ul>
-    <li><strong>Internet</strong> &mdash; to fetch event information and load event photos.</li>
-    <li><strong>Photos / Media access</strong> (<code>READ_MEDIA_IMAGES</code> on Android 13+,
-      <code>WRITE_EXTERNAL_STORAGE</code> on Android 9 and earlier) &mdash; required only
-      when you choose to download a photo, so the app can save it to your gallery.</li>
+    <li>We don't run analytics that record what you tap or how long you stay.</li>
+    <li>We don't access your contacts, location, microphone, or camera.</li>
+    <li>We don't read or upload your existing photos or media.</li>
+    <li>We don't ask you to create an account, sign in, or share an email.</li>
   </ul>
-  <p>The app does not access your existing photos or media in any other way.</p>
 
-  <h2>Third-party services</h2>
+  <h2>Photos in the app</h2>
   <p>
-    The only external service the app communicates with is Cloudflare R2, which hosts the
-    photo files. Cloudflare's privacy practices are described at
-    <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">cloudflare.com/privacypolicy</a>.
-    No advertising, analytics, attribution, crash-reporting, or other third-party SDKs are
-    integrated into the app.
+    The photos shown in the app are uploaded by the photo studio running
+    your event. They are loaded onto your phone only while you are viewing
+    the gallery.
+  </p>
+  <p>
+    When you tap the download button, that photo is saved to your phone's
+    own Photos / Gallery app, inside an album called
+    <strong>Pic Studios</strong>. Saved photos stay on your device only —
+    the app does not upload them or share them anywhere.
   </p>
 
-  <h2>Sharing</h2>
+  <h2>Permissions the app asks for</h2>
+  <p>The app uses two device permissions, each only for what they sound like:</p>
+  <ul>
+    <li>
+      <strong>Internet access</strong> &mdash; needed to look up your event
+      and load its photos. The app cannot work offline.
+    </li>
+    <li>
+      <strong>Permission to save photos</strong> &mdash; used only when you
+      tap the download button, so the photo can land in your gallery. We do
+      not read or send your existing photos with this permission.
+    </li>
+  </ul>
+
+  <h2>Sharing your information</h2>
   <p>
-    We do not share, sell, or rent any data to third parties. We have no business
-    relationship that would involve sharing data.
+    We do not sell, rent, trade, or share user information with anyone.
+    Because we do not collect personal information from you in the first
+    place, there is nothing to sell or share.
+  </p>
+
+  <h2>How long information is kept</h2>
+  <p>
+    Each event has its own lifetime, set by the photo studio that created
+    it &mdash; either until the studio deletes the event, or until an
+    expiry date the studio chose. We keep no record of who entered an event
+    code, when, or from which device, so there is no per-user history to
+    retain or delete.
+  </p>
+
+  <h2>Security</h2>
+  <p>
+    All communication between the app and our servers uses secure, encrypted
+    connections. Because the app has no accounts and no passwords, there
+    are no login credentials to protect.
   </p>
 
   <h2>Children</h2>
   <p>
-    The app is not directed at children under 13 and does not knowingly collect any
-    personal information from anyone, regardless of age.
+    Pic Studios is not directed at children under 13, and we do not
+    knowingly collect personal information from children. If you believe a
+    child has shared personal information with us through the app, please
+    contact us so we can address it.
   </p>
 
-  <h2>Data retention and deletion</h2>
+  <h2>Your choices</h2>
   <p>
-    Because the app does not collect personal information, there is no personal data to
-    retain or delete. Event metadata stored on our servers is controlled by the studio
-    operating the event and is removed when the event is deleted or expires.
+    You can uninstall the app at any time to remove its access to your
+    device. Photos already saved to your gallery stay where they are &mdash;
+    the app no longer controls them once they're saved.
   </p>
 
   <h2>Changes to this policy</h2>
   <p>
-    If we update this policy, the new version will be available at the same URL with an
-    updated effective date.
+    If this policy is updated, the new version will be posted at this URL
+    with a new effective date. Material changes will be reflected in the
+    date at the top of the page.
   </p>
 
   <h2>Contact</h2>
   <p>
-    For questions about this policy, contact
+    For questions about this policy, email
     <a href="mailto:kaijat108+picstudios@gmail.com">kaijat108+picstudios@gmail.com</a>.
   </p>
 </body>
