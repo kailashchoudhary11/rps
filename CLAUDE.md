@@ -74,18 +74,30 @@ When the (deferred) admin endpoints are added, they must call `_normalize_code` 
 
 ### Networking quirks
 
-`ApiService.baseUrl` is a `String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000')`. Override at run/build time with `--dart-define`:
+Two `--dart-define` flags drive build-time configuration. Both have safe defaults so emulator dev requires no flags.
+
+| Flag | Default | What it does |
+|---|---|---|
+| `API_BASE_URL` | `http://10.0.2.2:8000` | Backend URL. Default targets the Android emulator's host gateway. |
+| `ADMOB_BANNER_ID` | Google's published test banner ID | Real AdMob banner ad-unit ID. The real ID is **not** in source/git — pass it at release-build time only. |
 
 ```bash
-flutter run   --dart-define=API_BASE_URL=http://<vm-ip>:8369
-flutter build apk --dart-define=API_BASE_URL=https://api.example.com
+# Local dev against an emulator hitting localhost:8000 — no flags needed.
+flutter run
+
+# Pointing at the live VM with real ads:
+flutter build appbundle --release \
+  --dart-define=API_BASE_URL=https://picstudios.trackedge.dev \
+  --dart-define=ADMOB_BANNER_ID=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
 ```
 
-The default targets the Android emulator's host gateway (`10.0.2.2`). Other contexts:
+Other backend-host contexts:
 
 - Physical Android phone on same WiFi → Mac's LAN IP (e.g. `http://192.168.1.42:8000`)
 - iOS simulator → `http://localhost:8000` (different from Android emulator)
-- VM with the deployed backend → `http://<vm-ip>:8369` (host port is hardcoded to 8369 in `backend/compose.yaml`)
+- VM with the deployed backend → `https://picstudios.trackedge.dev` (HTTPS via reverse proxy; container internally listens on 8000 and the compose file maps host port 8369)
+
+The AdMob **App ID** (`ca-app-pub-2380807091695352~1648770966`) is hardcoded in `android/app/src/main/AndroidManifest.xml` because AdMob requires it embedded directly in the manifest — the SDK won't initialize without it. Only the per-ad-unit IDs are gated via dart-define.
 
 ### Downloads
 

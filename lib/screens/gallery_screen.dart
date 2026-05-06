@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shimmer/shimmer.dart';
 import '../models/event_model.dart';
 import '../models/photo_item.dart';
+import '../services/ads_service.dart';
 import '../services/api_service.dart';
 import 'photo_viewer_screen.dart';
 
@@ -24,16 +26,47 @@ class _GalleryScreenState extends State<GalleryScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  BannerAd? _bannerAd;
+  bool _isBannerAdReady = false;
+
   @override
   void initState() {
     super.initState();
     _loadPhotos();
+    // Defer the AdMob load until after the first frame paints — keeps the
+    // initial gallery render off the main-thread path that the Ads SDK
+    // takes during its native-view inflation.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadBannerAd();
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _bannerAd?.dispose();
     super.dispose();
+  }
+
+  void _loadBannerAd() {
+    final ad = BannerAd(
+      adUnitId: AdsService.bannerUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          if (mounted) setState(() => _isBannerAdReady = true);
+        },
+        onAdFailedToLoad: (ad, _) {
+          ad.dispose();
+          // Leave _isBannerAdReady false — the bottomNavigationBar simply
+          // won't render, so the gallery looks the same as before ads
+          // were added when the network is offline or no fill is available.
+        },
+      ),
+    );
+    ad.load();
+    _bannerAd = ad;
   }
 
   Future<void> _loadPhotos() async {
@@ -65,9 +98,23 @@ class _GalleryScreenState extends State<GalleryScreen> {
     });
   }
 
+  Widget? _buildBannerSlot() {
+    final ad = _bannerAd;
+    if (!_isBannerAdReady || ad == null) return null;
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: ad.size.height.toDouble(),
+        width: ad.size.width.toDouble(),
+        child: AdWidget(ad: ad),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: _buildBannerSlot(),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

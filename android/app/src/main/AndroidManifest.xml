@@ -10,6 +10,14 @@
         android:label="Pic Studios"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- AdMob App ID. Required by google_mobile_ads — without this
+             metadata the app crashes at startup with "AdMob app ID
+             missing". Hardcoded by design; AdMob's docs require it
+             embedded directly in the manifest. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-2380807091695352~1648770966"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

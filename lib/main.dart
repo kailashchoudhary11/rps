@@ -1,10 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'screens/code_entry_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Kick off AdMob init in the background — we don't need to block first
+  // paint on it. By the time the gallery screen mounts and asks for a
+  // banner, initialization has finished.
+  unawaited(MobileAds.instance.initialize());
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
