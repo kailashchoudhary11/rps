@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -23,7 +25,13 @@ class PhotoViewerScreen extends StatefulWidget {
 class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   late PageController _pageController;
   late int _currentIndex;
+
   bool _isDownloading = false;
+  /// 0.0..1.0 when total bytes are known; null when the server didn't
+  /// send Content-Length (rare for R2). Null means "show indeterminate".
+  double? _downloadProgress;
+  String? _errorMessage;
+  Timer? _errorClearTimer;
 
   @override
   void initState() {
@@ -35,6 +43,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _errorClearTimer?.cancel();
     super.dispose();
   }
 
@@ -43,79 +52,41 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
 
     setState(() {
       _isDownloading = true;
+      _downloadProgress = null;
+      _errorMessage = null;
     });
+    _errorClearTimer?.cancel();
+
+    final photo = widget.photos[_currentIndex];
 
     try {
-      final photo = widget.photos[_currentIndex];
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-                SizedBox(width: 16),
-                Text('Downloading...'),
-              ],
-            ),
-            duration: Duration(seconds: 30),
-          ),
-        );
-      }
-
-      await DownloadService.downloadImage(photo.downloadUrl, photo.name);
+      await DownloadService.downloadImage(
+        photo.downloadUrl,
+        photo.name,
+        onProgress: (received, total) {
+          if (!mounted) return;
+          setState(() {
+            _downloadProgress = total > 0 ? received / total : null;
+          });
+        },
+      );
 
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 16),
-              const Expanded(child: Text('Saved to "Pic Studios" album')),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          action: SnackBarAction(
-            label: 'OK',
-            textColor: Colors.white,
-            onPressed: () {},
-          ),
-        ),
-      );
+      setState(() {
+        _isDownloading = false;
+        _downloadProgress = null;
+      });
+      // Silent success — the photo appearing in Gallery is the confirmation.
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error, color: Colors.white),
-              const SizedBox(width: 16),
-              Expanded(child: Text('Download failed: ${e.toString()}')),
-            ],
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isDownloading = false;
-        });
-      }
+      setState(() {
+        _isDownloading = false;
+        _downloadProgress = null;
+        _errorMessage = 'Download failed';
+      });
+      _errorClearTimer = Timer(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _errorMessage = null);
+      });
     }
   }
 
@@ -182,6 +153,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
             ),
           ),
 
+          // Bottom photo-info overlay (name + timestamp). Always present.
           Positioned(
             bottom: 0,
             left: 0,
@@ -204,6 +176,10 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (_isDownloading) _buildDownloadProgress(),
+                    if (_errorMessage != null) _buildErrorPill(),
+                    if (_isDownloading || _errorMessage != null)
+                      const SizedBox(height: 12),
                     Text(
                       widget.photos[_currentIndex].name,
                       style: const TextStyle(
@@ -238,6 +214,66 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDownloadProgress() {
+    final percent = _downloadProgress != null
+        ? '${(_downloadProgress! * 100).round()}%'
+        : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Downloading${percent.isEmpty ? '…' : ' $percent'}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: _downloadProgress,
+            minHeight: 3,
+            backgroundColor: Colors.white24,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange.shade400),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildErrorPill() {
+    return Row(
+      children: [
+        Icon(Icons.error_outline, color: Colors.red.shade300, size: 16),
+        const SizedBox(width: 6),
+        Text(
+          _errorMessage!,
+          style: TextStyle(
+            color: Colors.red.shade300,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
